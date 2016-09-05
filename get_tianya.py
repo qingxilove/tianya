@@ -2,7 +2,7 @@
 
 import re,os,requests
 from bs4 import BeautifulSoup
-import time
+import time,random
 # from PIL import Image
 # from io import StringIO
 
@@ -64,7 +64,7 @@ class TianYa():
         pattern=re.compile('_host="%E9%84%99%E8%A7%86%E6%8A%A2%E6%B2%99%E5%8F%91%E7%9A%84".*?class="bbs-content(.*?)href="#fabu_anchor"',re.S)
         result=re.findall(pattern,content)
         for item in result:
-            tmpUrl=re.findall(re.compile('original="(http://[a-zA-Z0-9].*?/.*?\.jpg)"'),item)
+            tmpUrl=re.findall(re.compile('original="(http://[a-zA-Z0-9].*?/.*?\.[a-z]{3,4})"'),item)
             # print tmpUrl
             if tmpUrl:
                 ImgUrls.extend(tmpUrl)
@@ -80,7 +80,7 @@ class TianYa():
         for url in ImgUrls:
             # print url
             imgContent=requests.get(url,headers=header).content
-            imgNamePattern=re.compile('http.*/(.*\.jpg)')
+            imgNamePattern=re.compile('http.*/(.*\.[a-z]{3,4})')
             imgName=re.findall(imgNamePattern,url)
             # print imgName[0]
             newImgName=self.CheckFileExist(imgName[0],'/root/python/tianya/')
@@ -96,32 +96,30 @@ class TianYa():
         pattern=re.compile('_host="%E9%84%99%E8%A7%86%E6%8A%A2%E6%B2%99%E5%8F%91%E7%9A%84".*?class="bbs-content(.*?)href="#fabu_anchor"',re.S)
         result=re.findall(pattern,content)
         print "楼主发言 %d 次！"% len(result)
+        fileHead='<head>\n<meta charset="utf-8">\n</head>'
         with open(str(PageNumber+1)+'.htm','a') as f:
+            f.write(fileHead)
             for item in result:
                 #每个item就是楼主的一个发言，如果发言中有图片，则替换为本地图片
-                imgurl=re.findall(re.compile('original="(http://[a-zA-Z0-9].*?/.*?\.jpg)"'),item)
+                #替换掉 xxx楼 信息。
+                textPattern=re.compile('<div class="atl-reply">.*?<a class="a-link-2 reply"',re.S)
+                item=re.sub(textPattern,"",item)
+                imgurl=re.findall(re.compile('original="(http://[a-zA-Z0-9].*?/.*?\.[a-z]{3,4})"'),item)
                 # imgNamePattern=re.compile('http.*/(.*\.jpg)')
                 if len(imgurl)!=0:
                     # print imgurl
                     for url in imgurl:
-                        # print url
-                        # imgName=re.findall(imgNamePattern,url)[0]
-                        # imgName=re.findall(imgNamePattern,url)[0]
-                        # print imgName
-                        # for i in self.tmpList:
-                        #     print i
-                        # if imgName=='m.jpg':
-                            # imgName=self.tmpList.pop(0)
                         #使用下载保存到本地的图片名，替换掉正文中图片的网络地址
                         if self.tmpList:
                             imgName=self.tmpList.pop(0) 
                             # print imgName  
-                            imgOld=re.findall(re.compile('src="(http.*?\.jpg)'),item)[0]
+                            imgOld=re.findall(re.compile('src="(http.*?\.jpg|http.*?\.gif)'),item)[0]
                             # print imgOld
                             item=re.sub(imgOld,imgName,item)
                         # print self.tmpList
-                f.write('\n'+item+'<br>')
-                f.write('-'*50)
+                # f.write('<br>'+item+'<br><"')
+                f.write(item+'<br>'+'-'*200+'<br>')
+                # f.write('-'*50)
             # f.write(result[0])
         # for item in result:
         #     print item
@@ -129,17 +127,14 @@ class TianYa():
 
 # # GetText(content)
 
-# GetIamge(content)
-# # for i in ImgUrls:
-# #     print i[0]
-# DownloadImage(ImgUrls)
 TY=TianYa()
 # content,soup=TY.GetPage()
-for PageNumber in xrange(502,503):
+for PageNumber in xrange(5,938):
     content=TY.GetPage(PageNumber+1)
     ImgUrls=TY.GetIamge(content)
     # for url in ImgUrls:
     #     print url
     TY.DownloadImage(ImgUrls)
     TY.GetText(content,PageNumber)
-    time.sleep(5)
+    #随机等待，防止被服务器拦截
+    time.sleep(random.uniform(0.5,5))
